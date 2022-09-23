@@ -1,4 +1,6 @@
 #include<iostream>
+#include <vector>
+#include <list>
 #include "opencv2/opencv.hpp"
 #include "glog/logging.h"
 #ifdef _MSC_VER
@@ -104,7 +106,8 @@
 			 }
 		 }
 	 }
-
+	 cv::imwrite("a.bmp", frontMask);
+	 cv::imwrite("b.bmp", behindMask);
 
 	 std::vector<std::vector<cv::Point>> contours;
 	 cv::findContours(frontMask, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
@@ -144,11 +147,25 @@
 		 cv::Rect region = cv::boundingRect(contours[i]);
 		 if (region.width > widthThre && region.height > heightThre)
 		 {
-			 std::vector<cv::Point> hull;
-			 cv::convexHull(contours[i], hull, true, true); 
+			 std::vector<int> hull;
+			 cv::convexHull(contours[i], hull, true, false); 
 			 CHECK(hull.size() > 2); 
+			 cv::Rect bbox = cv::boundingRect(contours[i]);
+			 cv::Point a(bbox.x, bbox.y);
+			 cv::Point b(bbox.x + bbox.width - 1, bbox.y);
+			 cv::Point c(bbox.x, bbox.y + bbox.height - 1);;
+			 cv::Point d(bbox.x + bbox.width - 1, bbox.y + bbox.height - 1);
+			 std::vector<cv::Point> hullPts(hull.size());
+			 for (int j = 0; j < hull.size(); j++)
+			 {
+				 hullPts[j] = contours[i][hull[j]];
+			 }
+			 
+
+
+
 			 cv::Mat planeTemp = cv::Mat::zeros(sheepWin.size(), CV_8UC1);
-			 cv::fillPoly(planeTemp, hull, cv::Scalar(255));
+			 cv::fillPoly(planeTemp, hullPts, cv::Scalar(255));
 
 		 }
 		 behindPatterns.emplace_back(region);
