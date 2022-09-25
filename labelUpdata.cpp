@@ -182,7 +182,7 @@ void Label::updata(const std::vector<cv::Mat>& newPatterns, const std::vector<cv
 }
 
 
-int Label::checkOrRegister(const bool& doRegister, const cv::Mat& newPattern, const cv::Mat& mask, const double& thre)
+int Label::checkOrRegister(const bool& doRegister, const cv::Mat& newPattern, const cv::Mat& mask, const double& thre, const double& color_thre)
 {
 	int thisLable = -1;
 	if (newPattern.cols > patternSize.width || newPattern.rows > patternSize.height)
@@ -229,7 +229,7 @@ int Label::checkOrRegister(const bool& doRegister, const cv::Mat& newPattern, co
 			float d1 = avgMat(diff1);
 			float d2 = avgMat(diff2); 
 			LOG(INFO)<<lables[oldId]<<"  " << d0 << " " << d1 << " " << d2;
-			if (d0+d1+d2< COLOR_DIFF_THRE_3_4)
+			if (d0+d1+d2< color_thre)
 			{ 
 				maxMatch = maxMatchTemp;
 				maxMatchLable = lables[oldId];

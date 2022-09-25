@@ -145,6 +145,7 @@
   <ItemGroup>
     <ClCompile Include="labelUpdata.cpp" />
     <ClCompile Include="源.cpp" />
+    <ClCompile Include="coverSort.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="common.h" />
