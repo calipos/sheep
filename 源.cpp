@@ -13,9 +13,15 @@
 #endif 
 #include "labelUpdata.h"
 cv::Mat global;
-Label lableblock;
-extern int whichCovers(const cv::Mat& img, const std::vector<std::pair<cv::Rect, int>>& frontReture,
-	const std::vector<std::tuple<cv::Rect, std::list<cv::Point>, int>>& coveredReture);
+Label labelblock;
+extern int whichCovers(const cv::Mat& img,
+	const std::vector<std::pair<cv::Rect, int>>& frontReture,
+	const std::vector<std::tuple<cv::Rect, std::list<cv::Point>, int>>& coveredReture,
+	std::vector<Pattern>& layer1,
+	std::vector<Pattern>& layer2_1,
+	std::vector<Pattern>& layer2_11,
+	std::vector<Pattern>& layer3_12,
+	std::vector<Pattern>& layer3_22);
 float getNearestPoint(const std::vector<cv::Point>& pts, const cv::Point& pt)
 {
 	CHECK(pts.size() > 1);
@@ -512,13 +518,13 @@ float bbOverlap(const cv::Rect& box1, const cv::Rect& box2)
 			 }
 		 }
 	 }
-	 std::vector<int>frontPatternsLables;//return
-	 lableblock.updata(frontPatternsImgs, frontPatternsMask, frontPatternsLables);
-	 frontReture.resize(frontPatternsLables.size());//return
-	 for (int i = 0; i < frontPatternsLables.size(); i++)
+	 std::vector<int>frontPatternsLabels;//return
+	 labelblock.updata(frontPatternsImgs, frontPatternsMask, frontPatternsLabels);
+	 frontReture.resize(frontPatternsLabels.size());//return
+	 for (int i = 0; i < frontPatternsLabels.size(); i++)
 	 {
 		 frontReture[i].first = frontPatterns[i];
-		 frontReture[i].second = frontPatternsLables[i];
+		 frontReture[i].second = frontPatternsLabels[i];
 	 }
 
 	 int heightThre = 0.5 * 0.3 * (minHeight + maxHeight);
@@ -537,7 +543,7 @@ float bbOverlap(const cv::Rect& box1, const cv::Rect& box2)
 		 } 
 	 }
 	 std::vector<std::tuple<cv::Rect, cv::Rect, std::list<cv::Point>>> covers = patternCover(behindPatternsContor, sheepWin.size(), minHeight, minWidth);
-	 std::vector<int>coversLable(covers.size(),-1);
+	 std::vector<int>coversLabel(covers.size(),-1);
 	  
 
 	 std::list<std::pair<int, int>>iou_max;
@@ -570,7 +576,7 @@ float bbOverlap(const cv::Rect& box1, const cv::Rect& box2)
 		 const auto& fullBbox = std::get<1>(d);
 		 const auto& coverdCorner = std::get<2>(d);
 		 cv::Mat patternLocalVisiable, patternLocal2;
-		 int thisLable = -1;
+		 int thisLabel = -1;
 		 if (coverdCorner.size() == 1)
 		 {
 			 sheepWinBehind(visiableBbox).copyTo(patternLocalVisiable);
@@ -581,15 +587,15 @@ float bbOverlap(const cv::Rect& box1, const cv::Rect& box2)
 			 cv::Mat patternMask = cv::Mat::ones(fullBbox.size(), CV_8UC1);
 			 cv::rectangle(patternMask, patternCenter, patternCoverdCorner, cv::Scalar(0), -1);
 #if templateMtach>0
-			 thisLable = lableblock.checkOrRegister(false, patternLocalVisiable, patternMask, MATCH_THRE_3_4, COLOR_DIFF_THRE_3_4);
+			 thisLabel = labelblock.checkOrRegister(false, patternLocalVisiable, patternMask, MATCH_THRE_3_4, COLOR_DIFF_THRE_3_4);
 #endif // templateMtach>0
 #if USE_SIFT>0
-			 thisLable = lableblock.checkOrRegister(false, patternLocalVisiable, patternMask, MATCH_THRE_3_4, COLOR_DIFF_THRE_3_4);
+			 thisLabel = labelblock.checkOrRegister(false, patternLocalVisiable, patternMask, MATCH_THRE_3_4, COLOR_DIFF_THRE_3_4);
 #endif // USE_SIFT>0
 
-			 cv::imwrite(std::to_string(thisLable) + " " + std::to_string(coverId) + ".bmp", patternLocalVisiable);
+			 cv::imwrite(std::to_string(thisLabel) + " " + std::to_string(coverId) + ".bmp", patternLocalVisiable);
 			 
-			 LOG(INFO) << thisLable;
+			 LOG(INFO) << thisLabel;
 		 }
 		 if (coverdCorner.size() == 2)
 		 {
@@ -621,11 +627,11 @@ float bbOverlap(const cv::Rect& box1, const cv::Rect& box2)
 				 }
 			 }
 #if templateMtach>0
-			 thisLable = lableblock.checkOrRegister(false, patternLocal2, patternMask, MATCH_THRE_2_4, COLOR_DIFF_THRE_2_4);
+			 thisLabel = labelblock.checkOrRegister(false, patternLocal2, patternMask, MATCH_THRE_2_4, COLOR_DIFF_THRE_2_4);
 #endif // templateMtach>0 
-			 cv::imwrite(std::to_string(thisLable) + " " + std::to_string(coverId) + ".bmp", patternLocal2);
+			 cv::imwrite(std::to_string(thisLabel) + " " + std::to_string(coverId) + ".bmp", patternLocal2);
 
-			 LOG(INFO) << thisLable;
+			 LOG(INFO) << thisLabel;
 		 }
 		 if (coverdCorner.size() == 33)
 		 {
@@ -677,14 +683,14 @@ float bbOverlap(const cv::Rect& box1, const cv::Rect& box2)
 				 cv::rectangle(patternMask, temp, cv::Scalar(1), -1);
 			 }
 #if templateMtach>0
-			 thisLable = lableblock.checkOrRegister(false, patternLocal2, patternMask, MATCH_THRE_1_4, COLOR_DIFF_THRE_1_4);
+			 thisLabel = labelblock.checkOrRegister(false, patternLocal2, patternMask, MATCH_THRE_1_4, COLOR_DIFF_THRE_1_4);
 #endif // templateMtach>0 
 			 cv::Mat patternLocal3;
 			 patternLocal2.copyTo(patternLocal3, patternMask);
-			 cv::imwrite(std::to_string(thisLable) + " " + std::to_string(coverId) + ".bmp", patternLocal3); 
-			 LOG(INFO) << thisLable;
+			 cv::imwrite(std::to_string(thisLabel) + " " + std::to_string(coverId) + ".bmp", patternLocal3); 
+			 LOG(INFO) << thisLabel;
 		 }
-		 coveredReture.emplace_back(std::make_tuple(fullBbox, coverdCorner, thisLable));
+		 coveredReture.emplace_back(std::make_tuple(fullBbox, coverdCorner, thisLabel));
 	 }
 
 
@@ -708,7 +714,10 @@ int main()
 	std::vector<std::tuple<cv::Rect, std::list<cv::Point>, int>> coveredReture;
 	analysis(img,sheepWin, fgColor, bgColor, lineColor, frontReture, coveredReture);
 	
-	whichCovers(global,frontReture, coveredReture);
+	std::vector<Pattern> layer1;
+	std::vector<Pattern>layer2_1, layer2_11;
+	std::vector<Pattern>layer3_12, layer3_22;
+	whichCovers(global, frontReture, coveredReture, layer1, layer2_1, layer2_11, layer3_12, layer3_22);
 
 	return 0;
 }

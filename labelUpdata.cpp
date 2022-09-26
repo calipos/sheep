@@ -50,9 +50,9 @@ float avgMat(cv::Mat& a)
 	cv::reduce(a, a, 1, cv::REDUCE_AVG);
 	return a.ptr<float>(0)[0];
 }
-void Label::updata(const std::vector<cv::Mat>& newPatterns, const std::vector<cv::Mat>& newPatternMask, std::vector<int>&localLable)
+void Label::updata(const std::vector<cv::Mat>& newPatterns, const std::vector<cv::Mat>& newPatternMask, std::vector<int>&localLabel)
 {
-	localLable.resize(newPatterns.size(),-1);
+	localLabel.resize(newPatterns.size(),-1);
 	cv::Size maxPatternsSize(0, 0);
 	for (size_t i = 0; i < newPatterns.size(); i++)
 	{
@@ -91,7 +91,7 @@ void Label::updata(const std::vector<cv::Mat>& newPatterns, const std::vector<cv
 		cv::split(patternLocal, patternLocal_rgb);
 #if templateMtach>0
 		double maxMatch = -1;
-		int maxMatchLable = -1;
+		int maxMatchLabel = -1;
 		for (int oldId = 0; oldId < frontPatternsExtend.size()/3; oldId++)
 		{
 			cv::Mat matchResult0, matchResult1, matchResult2;
@@ -105,14 +105,24 @@ void Label::updata(const std::vector<cv::Mat>& newPatterns, const std::vector<cv
 			LOG(INFO) << maxMatchTemp;
 			if (maxMatchTemp > maxMatch && maxMatchTemp > MATCH_THRE)
 			{
+				cv::Mat diff0 = diffMask(frontPatternsExtend[3 * oldId + 0](cv::Rect(matchPosition, patternLocal_rgb[0].size())), patternLocal_rgb[0], patternLocalMask);
+				cv::Mat diff1 = diffMask(frontPatternsExtend[3 * oldId + 1](cv::Rect(matchPosition, patternLocal_rgb[1].size())), patternLocal_rgb[1], patternLocalMask);
+				cv::Mat diff2 = diffMask(frontPatternsExtend[3 * oldId + 2](cv::Rect(matchPosition, patternLocal_rgb[2].size())), patternLocal_rgb[2], patternLocalMask);
 
-				maxMatch = maxMatchTemp;
-				maxMatchLable = lables[oldId];
+				float d0 = avgMat(diff0);
+				float d1 = avgMat(diff1);
+				float d2 = avgMat(diff2);
+				LOG(INFO) << labels[oldId] << "  " << d0 << " " << d1 << " " << d2;
+				if (d0 + d1 + d2 < COLOR_DIFF_THRE)
+				{
+					maxMatch = maxMatchTemp;
+					maxMatchLabel = labels[oldId];
+				}
 			}
 		}
-		if (maxMatchLable < 0)
+		if (maxMatchLabel < 0)
 		{
-			lables.emplace_back(newLable);
+			labels.emplace_back(newLabel);
 			cv::Mat temp = cv::Mat::zeros(targetSize, patternLocal.type());
 			patternLocal.copyTo(temp(cv::Rect(cv::Point(1, 1), patternLocal.size())));
 			std::vector<cv::Mat> temp_rgb;
@@ -120,12 +130,12 @@ void Label::updata(const std::vector<cv::Mat>& newPatterns, const std::vector<cv
 			frontPatternsExtend.emplace_back(temp_rgb[0]);
 			frontPatternsExtend.emplace_back(temp_rgb[1]);
 			frontPatternsExtend.emplace_back(temp_rgb[2]);
-			localLable[newId] = newLable;
-			newLable++;
+			localLabel[newId] = newLabel;
+			newLabel++;
 		}
 		else
 		{
-			localLable[newId] = maxMatchLable;
+			localLabel[newId] = maxMatchLabel;
 		}
 #endif
 #if USE_SIFT>0 
@@ -162,13 +172,13 @@ void Label::updata(const std::vector<cv::Mat>& newPatterns, const std::vector<cv
 		{ 
 			keypointss.emplace_back(keypoints);
 			descriptorss.emplace_back(descriptors); 
-			lables.emplace_back(newLable); 
-			localLable[newId] = newLable;
-			newLable++;
+			labels.emplace_back(newLabel); 
+			localLabel[newId] = newLabel;
+			newLabel++;
 		} 
 		else
 		{
-			localLable[newId] = lables[nearestId];
+			localLabel[newId] = labels[nearestId];
 		}
 #endif // USE_SIFT>0
 
@@ -184,7 +194,7 @@ void Label::updata(const std::vector<cv::Mat>& newPatterns, const std::vector<cv
 
 int Label::checkOrRegister(const bool& doRegister, const cv::Mat& newPattern, const cv::Mat& mask, const double& thre, const double& color_thre)
 {
-	int thisLable = -1;
+	int thisLabel = -1;
 	if (newPattern.cols > patternSize.width || newPattern.rows > patternSize.height)
 	{
 		cv::Size targetSize;
@@ -205,7 +215,7 @@ int Label::checkOrRegister(const bool& doRegister, const cv::Mat& newPattern, co
 	std::vector<cv::Mat> patternLocal_rgb;
 	cv::split(patternLocal, patternLocal_rgb);
 	double maxMatch = -1;
-	int maxMatchLable = -1;
+	int maxMatchLabel = -1;
 	for (int oldId = 0; oldId < frontPatternsExtend.size()/3; oldId++)
 	{
 		cv::Mat matchResult, matchResult0, matchResult1, matchResult2; 
@@ -228,20 +238,20 @@ int Label::checkOrRegister(const bool& doRegister, const cv::Mat& newPattern, co
 			float d0 = avgMat(diff0);
 			float d1 = avgMat(diff1);
 			float d2 = avgMat(diff2); 
-			LOG(INFO)<<lables[oldId]<<"  " << d0 << " " << d1 << " " << d2;
+			LOG(INFO)<<labels[oldId]<<"  " << d0 << " " << d1 << " " << d2;
 			if (d0+d1+d2< color_thre)
 			{ 
 				maxMatch = maxMatchTemp;
-				maxMatchLable = lables[oldId];
+				maxMatchLabel = labels[oldId];
 			}
 		}
 	}
 	if (doRegister)
 	{
 
-		if (maxMatchLable < 0)
+		if (maxMatchLabel < 0)
 		{
-			lables.emplace_back(newLable);
+			labels.emplace_back(newLabel);
 			cv::Mat temp = cv::Mat::zeros(patternSize, patternLocal.type());
 			patternLocal.copyTo(temp(cv::Rect(cv::Point(1, 1), patternLocal.size())));
 			std::vector<cv::Mat> temp_rgb;
@@ -249,17 +259,17 @@ int Label::checkOrRegister(const bool& doRegister, const cv::Mat& newPattern, co
 			frontPatternsExtend.emplace_back(temp_rgb[0]);
 			frontPatternsExtend.emplace_back(temp_rgb[1]);
 			frontPatternsExtend.emplace_back(temp_rgb[2]);
-			thisLable = newLable;
-			newLable++;
+			thisLabel = newLabel;
+			newLabel++;
 		}
 		else
 		{
-			thisLable = maxMatchLable;
+			thisLabel = maxMatchLabel;
 		}
 	}
 	else
 	{
-		thisLable = maxMatchLable;
+		thisLabel = maxMatchLabel;
 	}
 #endif
 #if USE_SIFT>0
@@ -297,22 +307,22 @@ int Label::checkOrRegister(const bool& doRegister, const cv::Mat& newPattern, co
 		{
 			keypointss.emplace_back(keypoints);
 			descriptorss.emplace_back(descriptors);
-			lables.emplace_back(newLable);
-			thisLable = newLable;
-			newLable++;
+			labels.emplace_back(newLabel);
+			thisLabel = newLabel;
+			newLabel++;
 		}
 		else
 		{
-			thisLable = lables[nearestId];
+			thisLabel = labels[nearestId];
 		}
 	}
 	else
 	{
 		if (nearestId>=0 && nearestDistance <= thre)
 		{
-			thisLable = lables[nearestId];
+			thisLabel = labels[nearestId];
 		}
 	}
 #endif 
-	return thisLable;
+	return thisLabel;
 }
