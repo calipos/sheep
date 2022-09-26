@@ -171,7 +171,7 @@ int whichCovers(const cv::Mat& img,
 				layer2_1.clear(); layer2_11.clear();
 				layer3_12.clear(); layer3_22.clear();
 	//for (auto d : layer1)LOG(INFO) << d;
-	for (auto d : templayers)LOG(INFO) << d;
+	//for (auto d : templayers)LOG(INFO) << d;
 	std::list<int>layer2_1_ids;
 	std::list<int>layer2_11_ids;
 	for (auto d : templayers)

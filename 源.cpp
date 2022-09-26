@@ -14,6 +14,13 @@
 #include "labelUpdata.h"
 cv::Mat global;
 Label labelblock;
+extern int recursive(const std::vector<int>& currentLabels,
+	const std::vector<Pattern>& layer1,
+	const std::vector<Pattern>& layer2_1,
+	const std::vector<Pattern>& layer2_11,
+	const std::vector<Pattern>& layer3_12,
+	const std::vector<Pattern>& layer3_22,
+	ScoreChain& scoreChain);
 extern int whichCovers(const cv::Mat& img,
 	const std::vector<std::pair<cv::Rect, int>>& frontReture,
 	const std::vector<std::tuple<cv::Rect, std::list<cv::Point>, int>>& coveredReture,
@@ -718,6 +725,9 @@ int main()
 	std::vector<Pattern>layer2_1, layer2_11;
 	std::vector<Pattern>layer3_12, layer3_22;
 	whichCovers(global, frontReture, coveredReture, layer1, layer2_1, layer2_11, layer3_12, layer3_22);
+
+	ScoreChain potentialScores;
+	recursive({}, layer1, layer2_1, layer2_11, layer3_12, layer3_22, potentialScores);
 
 	return 0;
 }

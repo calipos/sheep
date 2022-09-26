@@ -24,6 +24,9 @@
 #define MAX_PATTERN (7)
 #define MAX_PATTERN_1 (MAX_PATTERN-1)
 
+#define yes_ (4) 
+#define no_ (-1) 
+
 #define SHOW_COVERS 0
 #include <iostream>
 #include "opencv2/opencv.hpp"
@@ -105,4 +108,11 @@ struct Pattern
 		o << "]";
 		return  o;
 	}
+};
+struct ScoreChain
+{
+	int pickfrontIdx{-100};
+	int score{ 0 };
+	ScoreChain* nextStep{nullptr};
+	int nextStepCnt{0};
 };
