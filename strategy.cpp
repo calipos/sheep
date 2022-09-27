@@ -107,27 +107,27 @@ int chooseFrontOne(const int&frontId,
 	std::vector<Pattern>& layer3_12,
 	std::vector<Pattern>& layer3_22)
 {
-	CHECK(frontId>=0 && frontId< layer1.size());
+	//CHECK(frontId>=0 && frontId< layer1.size());
 	std::list<int>layer1_ids;
-	Pattern* choosedFront = nullptr;
-	for (auto it= layer1.begin(); it != layer1.end();it++)
+	Pattern choosedFront;
+	for (auto it= layer1.begin(); it != layer1.end();)
 	{ 
 		if (it->id == frontId)
 		{
-			choosedFront = &(*it);
-			//layer1.erase(it);
+			choosedFront = *it;
+			it=layer1.erase(it);
 			//break;
 		}
 		else
 		{
 			layer1_ids.emplace_back(it->id);
+			it++;
 		}
 	}
-	CHECK(choosedFront != nullptr);;
 	std::list<Pattern>remains; 
 	for (int i = 0; i < layer2_1.size(); i++)
 	{  
-		int upperId = layer2_1[i].hasUpper(*choosedFront);
+		int upperId = layer2_1[i].hasUpper(choosedFront);
 		if (upperId>=0)
 		{ 
 			layer2_1[i].eraseUpper(upperId);
@@ -141,7 +141,7 @@ int chooseFrontOne(const int&frontId,
 	}
 	for (int i = 0; i < layer2_11.size(); i++)
 	{
-		int upperId = layer2_11[i].hasUpper(*choosedFront);
+		int upperId = layer2_11[i].hasUpper(choosedFront);
 		if (upperId >= 0)
 		{
 			layer2_11[i].eraseUpper(upperId);
@@ -154,7 +154,7 @@ int chooseFrontOne(const int&frontId,
 	}
 	for (int i = 0; i < layer3_12.size(); i++)
 	{
-		int upperId = layer3_12[i].hasUpper(*choosedFront);
+		int upperId = layer3_12[i].hasUpper(choosedFront);
 		if (upperId >= 0)
 		{
 			layer3_12[i].eraseUpper(upperId);
@@ -176,6 +176,10 @@ int chooseFrontOne(const int&frontId,
 	std::list<int>layer2_ids;
 	for (auto&d: remains)
 	{
+		if (d.upperCnt == 0)
+		{
+			layer1.emplace_back(d);
+		}
 		if (d.upperCnt == 1 && layer1_ids.end() != std::find(layer1_ids.begin(), layer1_ids.end(), d.uppers[0]))
 		{
 			new_layer2_1.emplace_back(d);
@@ -214,14 +218,22 @@ int chooseFrontOne(const int&frontId,
 	layer3_22 = new_layer3_22;
 	return 0;
 }
-int chooseFrontlIST(const std::list<int>& frontIds,
-	std::vector<Pattern>& layer1,
-	std::vector<Pattern>& layer2_1,
-	std::vector<Pattern>& layer2_11,
-	std::vector<Pattern>& layer3_12,
-	std::vector<Pattern>& layer3_22)
+int chooseFrontList(const std::list<int>& frontIds,
+	const std::vector<Pattern>& layer1,
+	const std::vector<Pattern>& layer2_1,
+	const std::vector<Pattern>& layer2_11,
+	const std::vector<Pattern>& layer3_12,
+	const std::vector<Pattern>& layer3_22)
 {
-
+	std::vector<Pattern>new_layer1 = layer1;
+	std::vector<Pattern>new_layer2_1 = layer2_1;
+	std::vector<Pattern>new_layer2_11 = layer2_11;
+	std::vector<Pattern>new_layer3_12 = layer3_12;
+	std::vector<Pattern>new_layer3_22 = layer3_22;
+	for (const auto&d: frontIds)
+	{
+		chooseFrontOne(d, new_layer1, new_layer2_1, new_layer2_11, new_layer3_12, new_layer3_22);
+	}
 	return 0;
 }
 std::list<std::list<int>> getCandidate(const std::vector<int>& currentLabels,
@@ -265,8 +277,12 @@ std::list<std::list<int>> getCandidate(const std::vector<int>& currentLabels,
 					potentialChoose.emplace_back(d1);
 				}
 			}
-			std::list<std::list<int>> path = choose(potentialChoose,3- existedCnt);
-			candidatePath.insert(candidatePath.end(), path.begin(), path.end());
+			if (3 - existedCnt+ currentLabels.size()<=MAX_PATTERN)
+			{
+				std::list<std::list<int>> path = choose(potentialChoose, 3 - existedCnt);
+				candidatePath.insert(candidatePath.end(), path.begin(), path.end());
+			}
+			
 		}
 	} 
 	return candidatePath;
@@ -286,6 +302,9 @@ int recursive(const std::vector<int>&currentLabels,
 	{
 		return 0;
 	}
+
+	chooseFrontList(*candidatePath.begin(), layer1, layer2_1, layer2_11, layer3_12, layer3_22);
+
 	//scoreChain.nextStep = new ScoreChain[candidate.size()];
 	//scoreChain.nextStepCnt = candidate.size();
 	//int candidateIdx = 0;

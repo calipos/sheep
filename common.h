@@ -76,7 +76,7 @@ struct Pattern
 		CHECK(upperCnt>0);
 		upperCnt--;
 		if (upperId == 3)return 0;
-		for (int i = upperId; i < 4; i++)
+		for (int i = upperId; i < 3; i++)
 		{
 			uppers[i] = uppers[i+1];
 		} 
@@ -87,11 +87,21 @@ struct Pattern
 		CHECK(lowerCnt > 0);
 		lowerCnt--;
 		if (lowerId == 3)return 0;
-		for (int i = lowerId; i < 4; i++)
+		for (int i = lowerId; i < 3; i++)
 		{
 			lowers[i] = lowers[i + 1];
 		}
 		return 0;
+	}
+	void operator=(const Pattern& other)
+	{
+		id = other.id;
+		label = other.label;
+		r = other.r;
+		upperCnt = other.upperCnt;
+		lowerCnt = other.lowerCnt;
+		uppers = other.uppers;
+		lowers = other.lowers; 
 	}
 	static friend std::ostream& operator<<(std::ostream& o, const Pattern& p)
 	{
