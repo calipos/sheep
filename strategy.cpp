@@ -1,5 +1,6 @@
 #include<iostream>
 #include <map>
+#include <algorithm>
 #include <vector>
 #include <list>
 #include <tuple>
@@ -13,6 +14,18 @@
 #endif // !GLOG_NO_ABBREVIATED_SEVERITIES
 #define GLOG_NO_ABBREVIATED_SEVERITIES
 #endif 
+int score(const std::vector<Pattern>& layer1,
+	const std::vector<Pattern>& layer2_1,
+	const std::vector<Pattern>& layer2_11,
+	const std::vector<Pattern>& layer3_12,
+	const std::vector<Pattern>& layer3_22)
+{
+	return (1 << 5) * layer1.size()
+		+ (1 << 4) * layer2_1.size()
+		+ (1 << 3) * layer2_11.size()
+		+ (1 << 2) * layer3_12.size()
+		+ (1 << 1) * layer3_22.size();
+}
 std::list<std::list<int>> choose(const std::list<int>& a, const int& chooseNum)
 {
 	CHECK(chooseNum<=a.size());
@@ -234,7 +247,8 @@ int chooseFrontList(const std::list<int>& frontIds,
 	{
 		chooseFrontOne(d, new_layer1, new_layer2_1, new_layer2_11, new_layer3_12, new_layer3_22);
 	}
-	return 0;
+
+	return score(new_layer1, new_layer2_1, new_layer2_11, new_layer3_12, new_layer3_22);
 }
 std::list<std::list<int>> getCandidate(const std::vector<int>& currentLabels,
 	const std::vector<Pattern>& layer1,
@@ -295,16 +309,30 @@ int recursive(const std::vector<int>&currentLabels,
 	const std::vector<Pattern>& layer2_11,
 	const std::vector<Pattern>& layer3_12,
 	const std::vector<Pattern>& layer3_22,
-	ScoreChain& scoreChain)
+	cv::Rect& pickRect)
 {
 	std::list<std::list<int>> candidatePath = getCandidate(currentLabels, layer1, layer2_1, layer2_11, layer3_12, layer3_22);
 	if (candidatePath.size()==0)
 	{
 		return 0;
 	}
-
-	chooseFrontList(*candidatePath.begin(), layer1, layer2_1, layer2_11, layer3_12, layer3_22);
-
+	std::list<std::pair<int, int>>scores;
+	for (const auto&d: candidatePath)
+	{
+		int score = chooseFrontList(d, layer1, layer2_1, layer2_11, layer3_12, layer3_22);
+		scores.emplace_back(std::make_pair(score, *d.begin()));
+	} 
+	scores.sort([](const auto& a, const auto& b) {return a.first > b.first; });
+	pickRect.x = -1;
+	int hitLabel = -1;
+	for (const auto&d: layer1)
+	{
+		if (d.id == scores.begin()->second)
+		{
+			pickRect = d.r;
+			hitLabel = d.label;
+		}
+	}
 	//scoreChain.nextStep = new ScoreChain[candidate.size()];
 	//scoreChain.nextStepCnt = candidate.size();
 	//int candidateIdx = 0;
@@ -369,6 +397,6 @@ int recursive(const std::vector<int>&currentLabels,
 	//		*scoreChain.nextStep);
 	//	candidateIdx++;
 	//}
-	return 0;
+	return hitLabel;
 
 }

@@ -12,6 +12,7 @@
 #define GLOG_NO_ABBREVIATED_SEVERITIES
 #endif 
 #include "labelUpdata.h"
+#include "screen.h"
 cv::Mat global;
 Label labelblock;
 extern int recursive(const std::vector<int>& currentLabels,
@@ -20,7 +21,7 @@ extern int recursive(const std::vector<int>& currentLabels,
 	const std::vector<Pattern>& layer2_11,
 	const std::vector<Pattern>& layer3_12,
 	const std::vector<Pattern>& layer3_22,
-	ScoreChain& scoreChain);
+	cv::Rect& pickRect);
 extern int whichCovers(const cv::Mat& img,
 	const std::vector<std::pair<cv::Rect, int>>& frontReture,
 	const std::vector<std::tuple<cv::Rect, std::list<cv::Point>, int>>& coveredReture,
@@ -706,28 +707,72 @@ float bbOverlap(const cv::Rect& box1, const cv::Rect& box2)
 
 int main()
 {
-	cv::Mat img = cv::imread("C:/Users/Administrator/Downloads/sheep.bmp");
-	cv::Rect sheepWin;
-	auto grassColor = cv::Vec3b(139, 254, 195);
-	auto fgColor = cv::Vec3b(205,255,245);//front
-	auto bgColor = cv::Vec3b(123, 153, 147);//behind
-	auto lineColor = cv::Vec3b(30,80,60);//line
-	if (pickWindowBaseBg(img, grassColor, sheepWin))
+	int screenHeight = 0;
+	int screenWidth = 0;
+	initGDI(&screenHeight,&screenWidth);
+
+	std::vector<int>  currentLabels;
+	while (true)
 	{
-		LOG(ERROR) << "pickWindowBaseBg";
+
+
+
+		cv::Mat screen;
+		screenCapture(&screen);
+
+
+		cv::Mat& img = screen;
+		cv::Rect sheepWin;
+		auto grassColor = cv::Vec3b(139, 254, 195);
+		auto fgColor = cv::Vec3b(205, 255, 245);//front
+		auto bgColor = cv::Vec3b(123, 153, 147);//behind
+		auto lineColor = cv::Vec3b(30, 80, 60);//line
+		if (pickWindowBaseBg(img, grassColor, sheepWin))
+		{
+			LOG(ERROR) << "pickWindowBaseBg";
+		}
+		img(sheepWin).copyTo(global);
+		std::vector<std::pair<cv::Rect, int>> frontReture;
+		std::vector<std::tuple<cv::Rect, std::list<cv::Point>, int>> coveredReture;
+		analysis(img, sheepWin, fgColor, bgColor, lineColor, frontReture, coveredReture);
+
+		std::vector<Pattern> layer1;
+		std::vector<Pattern>layer2_1, layer2_11;
+		std::vector<Pattern>layer3_12, layer3_22;
+		whichCovers(global, frontReture, coveredReture, layer1, layer2_1, layer2_11, layer3_12, layer3_22);
+
+		cv::Rect hit;
+		int hitLabel = recursive(currentLabels, layer1, layer2_1, layer2_11, layer3_12, layer3_22, hit);
+		currentLabels.emplace_back(hitLabel);
+		{
+			std::map<int, int>labelCntTemp;
+			for (size_t i = 0; i < currentLabels.size(); i++)
+			{
+				if (labelCntTemp.count(currentLabels[i])==0)
+				{
+					labelCntTemp[currentLabels[i]] = 1;
+				}
+				else
+				{
+					labelCntTemp[currentLabels[i]]++;
+				}
+			}
+			std::vector<int>newCurrentLabels;
+			newCurrentLabels.reserve(8); 
+			for (auto &d: labelCntTemp)
+			{
+				int pushCnt = (d.second >= 3) ? d.second - 3 : d.second;
+				for (int i = 0; i < pushCnt; i++)
+				{
+					newCurrentLabels.emplace_back(d.first);
+				}
+				currentLabels = newCurrentLabels;
+			}
+		}
+
+		setMousePos(sheepWin.x + hit.x + 0.5 * hit.width, sheepWin.y + hit.y + 0.5 * hit.height);
+		setMouseLeftChick();
+
 	}
-	img(sheepWin).copyTo(global);
-	std::vector<std::pair<cv::Rect, int>> frontReture;
-	std::vector<std::tuple<cv::Rect, std::list<cv::Point>, int>> coveredReture;
-	analysis(img,sheepWin, fgColor, bgColor, lineColor, frontReture, coveredReture);
-	
-	std::vector<Pattern> layer1;
-	std::vector<Pattern>layer2_1, layer2_11;
-	std::vector<Pattern>layer3_12, layer3_22;
-	whichCovers(global, frontReture, coveredReture, layer1, layer2_1, layer2_11, layer3_12, layer3_22);
-
-	ScoreChain potentialScores;
-	recursive({}, layer1, layer2_1, layer2_11, layer3_12, layer3_22, potentialScores);
-
 	return 0;
 }

@@ -27,12 +27,18 @@
     <ClCompile Include="strategy.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="screen.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="common.h">
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="labelUpdata.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="screen.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>
