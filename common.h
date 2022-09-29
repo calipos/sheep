@@ -1,5 +1,5 @@
 #pragma once
-#define  MATCH_THRE (0.85)
+#define  MATCH_THRE (0.72)
 #define  COLOR_DIFF_THRE (45)//3*25
 #define  MATCH_THRE_3_4 (0.6)
 #define  MATCH_THRE_2_4 (0.75)
@@ -19,6 +19,8 @@
 
 #define CURREN_LABEL_REGION (0.25)
 
+#define  LABEL_EXPAND_MARGIN (16)
+#define  LABEL_EXPAND_MARGIN_HALF (LABEL_EXPAND_MARGIN/2)
 
 #define templateMtach 1
 #define USE_ORB 0

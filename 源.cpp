@@ -624,7 +624,7 @@ float bbOverlap(const cv::Rect& box1, const cv::Rect& box2)
 	 }
 	 
  
-	 for (int i = 0; i < maybeHalfFrontPatterns.size()-1; i++)
+	 for (int i = 0; i < maybeHalfFrontPatterns.size(); i++)
 	 {
 		 for (int j = i+1; j < maybeHalfFrontPatterns.size(); j++)
 		 {
@@ -734,7 +734,7 @@ float bbOverlap(const cv::Rect& box1, const cv::Rect& box2)
 			 thisLabel = labelblock.checkOrRegister(false, patternLocalVisiable, patternMask, MATCH_THRE_3_4, COLOR_DIFF_THRE_3_4);
 #endif // USE_SIFT>0
 
-			 cv::imwrite(std::to_string(thisLabel) + " " + std::to_string(coverId) + ".bmp", patternLocalVisiable);
+			 //cv::imwrite(std::to_string(thisLabel) + " " + std::to_string(coverId) + ".bmp", patternLocalVisiable);
 			 
 			 LOG(INFO) << thisLabel;
 		 }
@@ -770,7 +770,7 @@ float bbOverlap(const cv::Rect& box1, const cv::Rect& box2)
 #if templateMtach>0
 			 thisLabel = labelblock.checkOrRegister(false, patternLocal2, patternMask, MATCH_THRE_2_4, COLOR_DIFF_THRE_2_4);
 #endif // templateMtach>0 
-			 cv::imwrite(std::to_string(thisLabel) + " " + std::to_string(coverId) + ".bmp", patternLocal2);
+			 //cv::imwrite(std::to_string(thisLabel) + " " + std::to_string(coverId) + ".bmp", patternLocal2);
 
 			 LOG(INFO) << thisLabel;
 		 }
@@ -828,7 +828,7 @@ float bbOverlap(const cv::Rect& box1, const cv::Rect& box2)
 #endif // templateMtach>0 
 			 cv::Mat patternLocal3;
 			 patternLocal2.copyTo(patternLocal3, patternMask);
-			 cv::imwrite(std::to_string(thisLabel) + " " + std::to_string(coverId) + ".bmp", patternLocal3); 
+			 //cv::imwrite(std::to_string(thisLabel) + " " + std::to_string(coverId) + ".bmp", patternLocal3); 
 			 LOG(INFO) << thisLabel;
 		 }
 		 coveredReture.emplace_back(std::make_tuple(fullBbox, coverdCorner, thisLabel));
@@ -851,8 +851,9 @@ int main()
 
 	 
 		cv::Mat screen;
-		//screenCapture(&screen);
-		screen = cv::imread("sheep.bmp"); 
+		screenCapture(&screen);
+		//cv::imwrite("sheep.bmp", screen);
+		//screen = cv::imread("sheep.bmp"); 
 
 		cv::Mat& img = screen;
 		cv::Rect sheepWin;

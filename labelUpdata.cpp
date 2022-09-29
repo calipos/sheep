@@ -65,12 +65,13 @@ void Label::updata(const std::vector<cv::Mat>& newPatterns, const std::vector<cv
 		cv::Size existPatternSize = frontPatternsExtend[0].size();
 		if (existPatternSize.width < maxPatternsSize.width || existPatternSize.height < maxPatternsSize.height)
 		{
-			targetSize= cv::Size(maxPatternsSize.width + 2, maxPatternsSize.height + 2);
+			targetSize= cv::Size(maxPatternsSize.width + LABEL_EXPAND_MARGIN,
+				maxPatternsSize.height + LABEL_EXPAND_MARGIN);
 			for (size_t i = 0; i < frontPatternsExtend.size(); i++)
 			{ 
 				cv::Mat temp = cv::Mat::zeros(targetSize, frontPatternsExtend[i].type());
 				std::cout<<1<<std::endl;
-				frontPatternsExtend[i].copyTo(temp(cv::Rect(cv::Point(1, 1), frontPatternsExtend[i].size())));
+				frontPatternsExtend[i].copyTo(temp(cv::Rect(cv::Point(LABEL_EXPAND_MARGIN_HALF, LABEL_EXPAND_MARGIN_HALF), frontPatternsExtend[i].size())));
 				frontPatternsExtend[i] = temp;
 			}
 		}
@@ -81,7 +82,7 @@ void Label::updata(const std::vector<cv::Mat>& newPatterns, const std::vector<cv
 	} 
 	else
 	{
-			targetSize= cv::Size(maxPatternsSize.width + 2, maxPatternsSize.height + 2);
+			targetSize= cv::Size(maxPatternsSize.width + LABEL_EXPAND_MARGIN, maxPatternsSize.height + LABEL_EXPAND_MARGIN);
 	}
 
 	for (int newId = 0; newId < newPatterns.size(); newId++)
@@ -93,6 +94,7 @@ void Label::updata(const std::vector<cv::Mat>& newPatterns, const std::vector<cv
 #if templateMtach>0
 		double maxMatch = -1;
 		int maxMatchLabel = -1;
+		std::cout<<"this pattern idx = "<< newId << std::endl;
 		for (int oldId = 0; oldId < frontPatternsExtend.size()/3; oldId++)
 		{
 			cv::Mat matchResult0, matchResult1, matchResult2;
@@ -103,7 +105,7 @@ void Label::updata(const std::vector<cv::Mat>& newPatterns, const std::vector<cv
 			double maxMatchTemp = 0;
 			cv::Point matchPosition;
 			cv::minMaxLoc(matchResult, 0, &maxMatchTemp,0,&matchPosition);
-			LOG(INFO) << maxMatchTemp;
+			LOG(INFO) << oldId<<"  :  "<<maxMatchTemp;
 			if (maxMatchTemp > maxMatch && maxMatchTemp > MATCH_THRE)
 			{
 				cv::Mat diff0 = diffMask(frontPatternsExtend[3 * oldId + 0](cv::Rect(matchPosition, patternLocal_rgb[0].size())), patternLocal_rgb[0], patternLocalMask);
@@ -126,7 +128,7 @@ void Label::updata(const std::vector<cv::Mat>& newPatterns, const std::vector<cv
 			labels.emplace_back(newLabel);
 			cv::Mat temp = cv::Mat::zeros(targetSize, patternLocal.type());
 			std::cout << 2 << std::endl;
-			patternLocal.copyTo(temp(cv::Rect(cv::Point(1, 1), patternLocal.size())));
+			patternLocal.copyTo(temp(cv::Rect(cv::Point(LABEL_EXPAND_MARGIN_HALF, LABEL_EXPAND_MARGIN_HALF), patternLocal.size())));
 			std::vector<cv::Mat> temp_rgb;
 			cv::split(temp, temp_rgb);
 			frontPatternsExtend.emplace_back(temp_rgb[0]);
