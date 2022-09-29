@@ -26,24 +26,24 @@ int score(const std::vector<Pattern>& layer1,
 		+ (1 << 2) * layer3_12.size()
 		+ (1 << 1) * layer3_22.size();
 }
-std::list<std::list<int>> choose(const std::list<int>& a, const int& chooseNum)
+std::list<std::list<int>> choose(const std::list<int>& ids, const int& chooseNum)
 {
-	CHECK(chooseNum<=a.size());
+	CHECK(chooseNum<= ids.size());
 	CHECK(chooseNum > 0 && chooseNum <= 3);
 	std::list<std::list<int>>ret1;
 	if (chooseNum==1)
 	{
-		for (const auto&d:a)
+		for (const auto&id: ids)
 		{
-			ret1.emplace_back(std::list<int>{d});
+			ret1.emplace_back(std::list<int>{id});
 		}
 		return ret1;
 	}
 	if (chooseNum==2)
 	{
-		for (auto it1 = a.begin(); it1 != a.end(); it1++)
+		for (auto it1 = ids.begin(); it1 != ids.end(); it1++)
 		{
-			for (auto it2 = it1; it2 != a.end(); it2++)
+			for (auto it2 = it1; it2 != ids.end(); it2++)
 			{
 				if (it1 == it2)continue;
 				ret1.emplace_back(std::list<int>{ *it1, * it2 });
@@ -54,10 +54,10 @@ std::list<std::list<int>> choose(const std::list<int>& a, const int& chooseNum)
 	if (chooseNum == 3)
 	{
 		std::list<std::list<int>>sorts;
-		std::vector<int>idx(a.size());
-		std::vector<int>A(a.size());
-		auto it = a.begin();
-		for (int i = 0; i < a.size(); i++)
+		std::vector<int>idx(ids.size());
+		std::vector<int>A(ids.size());
+		auto it = ids.begin();
+		for (int i = 0; i < ids.size(); i++)
 		{
 			idx[i] = i;
 			A[i] = *it++;;
@@ -65,7 +65,7 @@ std::list<std::list<int>> choose(const std::list<int>& a, const int& chooseNum)
 		sorts.emplace_back(std::list<int>{idx[0], idx[1], idx[2]});
 		for (int i = 0; i < 3; i++)
 		{
-			for (int j = 3; j < a.size(); j++)
+			for (int j = 3; j < ids.size(); j++)
 			{ 
 				std::vector<int>temp = idx;
 				std::swap(temp[i], temp[j]);
@@ -73,9 +73,9 @@ std::list<std::list<int>> choose(const std::list<int>& a, const int& chooseNum)
 			}
 		}
 		std::list<std::pair<int, int>>swapRead;
-		for (int i = 3; i < a.size(); i++)
+		for (int i = 3; i < ids.size(); i++)
 		{
-			for (int j = i+1; j < a.size(); j++)
+			for (int j = i+1; j < ids.size(); j++)
 			{ 
 				swapRead.emplace_back(std::make_pair(i, j));
 			}
@@ -260,7 +260,7 @@ std::list<std::list<int>> getCandidate(const std::vector<int>& currentLabels,
 	if (currentLabels.size() == MAX_PATTERN)return std::list<std::list<int>>();
 	std::list<std::list<int>> candidatePath;
 	std::map<int, std::list<int>>labelCluster;
-	if (currentLabels.size()>0)	
+	//if (currentLabels.size()>0)	
 	for (int i = 0; i < currentLabels.size(); i++)
 	{
 		if (labelCluster.count(currentLabels[i]) == 0)
@@ -275,25 +275,25 @@ std::list<std::list<int>> getCandidate(const std::vector<int>& currentLabels,
 		{
 			labelCluster[layer1[i].label] = std::list<int>();
 		}
-		labelCluster[layer1[i].label].emplace_back(i);
+		labelCluster[layer1[i].label].emplace_back(layer1[i].id);
 	}
 	for (auto &d: labelCluster)
 	{
 		if (d.second.size()>=3)
 		{
 			int existedCnt = 0;
-			std::list<int>potentialChoose;
-			for (auto&d1: d.second)
+			std::list<int>potentialIdChoose;
+			for (auto&id: d.second)
 			{
-				if (d1 < 0)existedCnt++;
+				if (id < 0)existedCnt++;
 				else
 				{
-					potentialChoose.emplace_back(d1);
+					potentialIdChoose.emplace_back(id);
 				}
 			}
 			if (3 - existedCnt+ currentLabels.size()<=MAX_PATTERN)
 			{
-				std::list<std::list<int>> path = choose(potentialChoose, 3 - existedCnt);
+				std::list<std::list<int>> path = choose(potentialIdChoose, 3 - existedCnt);
 				candidatePath.insert(candidatePath.end(), path.begin(), path.end());
 			}
 			
@@ -311,92 +311,90 @@ int recursive(const std::vector<int>&currentLabels,
 	const std::vector<Pattern>& layer3_22,
 	cv::Rect& pickRect)
 {
+	//look for 3 
 	std::list<std::list<int>> candidatePath = getCandidate(currentLabels, layer1, layer2_1, layer2_11, layer3_12, layer3_22);
-	if (candidatePath.size()==0)
+	if (candidatePath.size() != 0)
 	{
-		return 0;
-	}
-	std::list<std::pair<int, int>>scores;
-	for (const auto&d: candidatePath)
-	{
-		int score = chooseFrontList(d, layer1, layer2_1, layer2_11, layer3_12, layer3_22);
-		scores.emplace_back(std::make_pair(score, *d.begin()));
-	} 
-	scores.sort([](const auto& a, const auto& b) {return a.first > b.first; });
-	pickRect.x = -1;
-	int hitLabel = -1;
-	for (const auto&d: layer1)
-	{
-		if (d.id == scores.begin()->second)
+		std::list<std::pair<int, int>>scores;
+		for (const auto& d : candidatePath)
 		{
-			pickRect = d.r;
-			hitLabel = d.label;
+			int score = chooseFrontList(d, layer1, layer2_1, layer2_11, layer3_12, layer3_22);
+			scores.emplace_back(std::make_pair(score, *d.begin()));
 		}
+		scores.sort([](const auto& a, const auto& b) {return a.first > b.first; });
+		pickRect.x = -1;
+		int hitLabel = -1;
+		for (const auto& d : layer1)
+		{
+			if (d.id == scores.begin()->second)
+			{
+				pickRect = d.r;
+				hitLabel = d.label;
+			}
+		}
+		return hitLabel;
 	}
-	//scoreChain.nextStep = new ScoreChain[candidate.size()];
-	//scoreChain.nextStepCnt = candidate.size();
-	//int candidateIdx = 0;
-	//for (auto &d: candidate)
-	//{
-	//	std::vector<int>newCurrentLabels = currentLabels;
-	//	std::vector<Pattern>new_layer1 = layer1;
-	//	std::vector<Pattern>new_layer2_1 = layer2_1;
-	//	std::vector<Pattern>new_layer2_11 = layer2_11;
-	//	std::vector<Pattern>new_layer3_12 = layer3_12;
-	//	std::vector<Pattern>new_layer3_22 = layer3_22;
-	//	chooseFrontOne(d,
-	//		new_layer1,
-	//		new_layer2_1,
-	//		new_layer2_11,
-	//		new_layer3_12, 
-	//		new_layer3_22);
-	//	newCurrentLabels.emplace_back(layer1[d].label);
-	//	std::map<int, int>collection;
-	//	for (auto &d1: newCurrentLabels)
-	//	{
-	//		if (collection.count(d1)==0)
-	//		{
-	//			collection[d1] = 1;
-	//		}
-	//		else
-	//		{
-	//			collection[d1]++;
-	//		}
-	//	}
-	//	int yes_label = -1;
-	//	for (auto&d1: collection)
-	//	{
-	//		if (d1.second>=3)
-	//		{
-	//			yes_label = d1.first;
-	//			break;
-	//		}
-	//	}
-	//	if (yes_label<0)
-	//	{
-	//		scoreChain.nextStep->score = no_;
-	//	}
-	//	else
-	//	{
-	//		scoreChain.nextStep->score = yes_;
-	//		for (auto iter = newCurrentLabels.begin(); iter != newCurrentLabels.end(); )
-	//		{
-	//			if (*iter == yes_label)
-	//				iter = newCurrentLabels.erase(iter);//当删除时erase函数自动指向下一个位置，就不需要进行++
-	//			else
-	//				iter++;    //当没有进行删除的时候，迭代器++
-	//		}
-	//	}
-	//	recursive(
-	//		newCurrentLabels,
-	//		new_layer1,
-	//		new_layer2_1,
-	//		new_layer2_11,
-	//		new_layer3_12,
-	//		new_layer3_22,
-	//		*scoreChain.nextStep);
-	//	candidateIdx++;
-	//}
-	return hitLabel;
+	else
+	{
+		std::list<std::pair<int, int>>scores;
+		for (const auto&d: layer1)
+		{
+			std::vector<Pattern>new_layer1 = layer1;
+			std::vector<Pattern>new_layer2_1 = layer2_1;
+			std::vector<Pattern>new_layer2_11 = layer2_11;
+			std::vector<Pattern>new_layer3_12 = layer3_12;
+			std::vector<Pattern>new_layer3_22 = layer3_22; 
+			chooseFrontOne(d.id, new_layer1, new_layer2_1, new_layer2_11, new_layer3_12, new_layer3_22);
+			std::vector<int>  newCurrentLabelsTmp = currentLabels;
+			newCurrentLabelsTmp.emplace_back(d.id);
+			std::map<int, int>labelClusterTmp;
+			for (auto& d : newCurrentLabelsTmp)
+			{
+				if (labelClusterTmp.count(d)==0)
+				{
+					labelClusterTmp[d] = 1;
+				}
+				else
+				{
+					labelClusterTmp[d]++;
+				}
+			}
+			int littleScore = 0;
+			for (auto& d : labelClusterTmp)
+			{
+				if (d.second >= 2)
+				{
+					littleScore++;
+				}
+			}
+
+			//look for 3 
+			std::list<std::list<int>> candidatePath2 = getCandidate(newCurrentLabelsTmp, new_layer1, new_layer2_1, new_layer2_11, new_layer3_12, new_layer3_22);
+			if (candidatePath2.size() != 0)
+			{ 
+				for (const auto& d1 : candidatePath)
+				{
+					int score = chooseFrontList(d1, layer1, layer2_1, layer2_11, layer3_12, layer3_22);
+					scores.emplace_back(std::make_pair(score+ littleScore, d.id));
+				} 
+			}
+			else
+			{
+				scores.emplace_back(std::make_pair(littleScore, d.id));
+			}
+		}
+		scores.sort([](const auto& a, const auto& b) {return a.first > b.first; });
+		pickRect.x = -1;
+		int hitLabel = -1;
+		for (const auto& d : layer1)
+		{
+			if (d.id == scores.begin()->second)
+			{
+				pickRect = d.r;
+				hitLabel = d.label;
+			}
+		}
+		return hitLabel;
+	}
 
 }

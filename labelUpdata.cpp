@@ -69,13 +69,14 @@ void Label::updata(const std::vector<cv::Mat>& newPatterns, const std::vector<cv
 			for (size_t i = 0; i < frontPatternsExtend.size(); i++)
 			{ 
 				cv::Mat temp = cv::Mat::zeros(targetSize, frontPatternsExtend[i].type());
+				std::cout<<1<<std::endl;
 				frontPatternsExtend[i].copyTo(temp(cv::Rect(cv::Point(1, 1), frontPatternsExtend[i].size())));
 				frontPatternsExtend[i] = temp;
 			}
 		}
 		else
 		{
-			targetSize = maxPatternsSize;
+			targetSize = existPatternSize; 
 		}
 	} 
 	else
@@ -124,6 +125,7 @@ void Label::updata(const std::vector<cv::Mat>& newPatterns, const std::vector<cv
 		{
 			labels.emplace_back(newLabel);
 			cv::Mat temp = cv::Mat::zeros(targetSize, patternLocal.type());
+			std::cout << 2 << std::endl;
 			patternLocal.copyTo(temp(cv::Rect(cv::Point(1, 1), patternLocal.size())));
 			std::vector<cv::Mat> temp_rgb;
 			cv::split(temp, temp_rgb);
@@ -137,6 +139,8 @@ void Label::updata(const std::vector<cv::Mat>& newPatterns, const std::vector<cv
 		{
 			localLabel[newId] = maxMatchLabel;
 		}
+
+		cv::imwrite("label_" + std::to_string(localLabel[newId]) + "_" + std::to_string(newId) + ".bmp", patternLocal);
 #endif
 #if USE_SIFT>0 
 		std::vector<cv::KeyPoint> keypoints;

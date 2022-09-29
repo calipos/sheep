@@ -17,6 +17,9 @@
 #define COVER_1_4_IOU_MIN (0.12)//0.25
 #define COVER_1_4_IOU_MAX (0.37)//0.25
 
+#define CURREN_LABEL_REGION (0.25)
+
+
 #define templateMtach 1
 #define USE_ORB 0
 #define USE_SIFT 0

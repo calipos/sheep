@@ -15,6 +15,7 @@
 #include "screen.h"
 cv::Mat global;
 Label labelblock;
+extern float bbOverlapBase(const cv::Rect& base, const cv::Rect& box2);
 extern int recursive(const std::vector<int>& currentLabels,
 	const std::vector<Pattern>& layer1,
 	const std::vector<Pattern>& layer2_1,
@@ -58,28 +59,36 @@ int mergeTwoQuars(
 	cv::Point(bbox_b.x, bbox_b.y + bbox_b.height - 1) };
 	cv::Rect newbbox = cv::boundingRect(bboxCorner);
 	
-	CHECK(newbbox.width<0.66* newbbox.height || newbbox.height < 0.66 * newbbox.width);
-	std::get<0>(a) = newbbox;
-	std::vector<cv::Point> fullbboxCorner = {
-	cv::Point(bbox_a_full.x,  bbox_a_full.y),
-	cv::Point(bbox_a_full.x + bbox_a_full.width - 1, bbox_a_full.y),
-	cv::Point(bbox_a_full.x + bbox_a_full.width - 1, bbox_a_full.y + bbox_a_full.height - 1),
-	cv::Point(bbox_a_full.x,  bbox_a_full.y + bbox_a_full.height - 1)  };
+	if (newbbox.width < 0.66 * newbbox.height || newbbox.height < 0.66 * newbbox.width)
+	{
+		std::get<0>(a) = newbbox;
+		std::vector<cv::Point> fullbboxCorner = {
+		cv::Point(bbox_a_full.x,  bbox_a_full.y),
+		cv::Point(bbox_a_full.x + bbox_a_full.width - 1, bbox_a_full.y),
+		cv::Point(bbox_a_full.x + bbox_a_full.width - 1, bbox_a_full.y + bbox_a_full.height - 1),
+		cv::Point(bbox_a_full.x,  bbox_a_full.y + bbox_a_full.height - 1) };
 
-	std::vector<float>dists(4);
-	for (int i = 0; i < 4; i++)
-	{ 
-		dists[i] = getNearestPoint(bboxCorner, fullbboxCorner[i]);
+		std::vector<float>dists(4);
+		for (int i = 0; i < 4; i++)
+		{
+			dists[i] = getNearestPoint(bboxCorner, fullbboxCorner[i]);
+		}
+		auto firstFarEle = std::min_element(dists.begin(), dists.end());
+		*firstFarEle = 0;
+		auto secondFarEle = std::min_element(dists.begin(), dists.end());
+		std::get<2>(a).emplace_back();
+		std::list<cv::Point> newCoverPt;
+		newCoverPt.emplace_back(fullbboxCorner[firstFarEle - dists.begin()]);
+		newCoverPt.emplace_back(fullbboxCorner[secondFarEle - dists.begin()]);
+		std::get<2>(a) = newCoverPt;
+		std::get<2>(b).clear();
 	}
-	auto firstFarEle = std::min_element(dists.begin(), dists.end());
-	*firstFarEle = 0;
-	auto secondFarEle = std::min_element(dists.begin(), dists.end()); 
-	std::get<2>(a).emplace_back();
-	std::list<cv::Point> newCoverPt;
-	newCoverPt.emplace_back(fullbboxCorner[firstFarEle - dists.begin()]);
-	newCoverPt.emplace_back(fullbboxCorner[secondFarEle - dists.begin()]);
-	std::get<2>(a) = newCoverPt;
-	std::get<2>(b).clear();
+	else
+	{// cross cover
+		std::get<2>(a).clear();
+		std::get<2>(b).clear();
+	}
+
 	return 0;
 }
 float bbOverlap(const cv::Rect& box1, const cv::Rect& box2)
@@ -143,24 +152,6 @@ float bbOverlap(const cv::Rect& box1, const cv::Rect& box2)
 			 }
 		 }
 	 }
-	 //contours.clear();
-	 //cv::findContours(mask, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
-	 //if (contours.size() < 1)return -1;
-	 //maxArea = 0;
-	 //cv::Rect centraRect;
-	 //for (int i = 0; i < contours.size(); i++)
-	 //{
-		// cv::Rect region = cv::boundingRect(contours[i]);
-		// if (region.area() > maxArea)
-		// {
-		//	 maxArea = region.area();
-		//	 centraRect = region;
-		// };
-	 //}
-	 //rect.x += centraRect.x;
-	 //rect.y += centraRect.y;
-	 //rect.width = centraRect.width;
-	 //rect.height = centraRect.height;
 	 return 0;
 }
 
@@ -493,7 +484,10 @@ float bbOverlap(const cv::Rect& box1, const cv::Rect& box2)
 	 cv::findContours(frontMask, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
 	 if (contours.size() < 1)return -1;
 
-	 std::vector<cv::Rect>frontPatterns;//return  
+	 std::vector<cv::Rect>frontPatterns;
+	 std::vector<cv::Rect>maybeHalfFrontPatterns;
+	 std::vector<cv::Mat>maybeHalfFrontPatternsImgs;
+	 std::vector<cv::Mat>maybeHalfFrontPatternsMask;
 	 int minHeight = rect.width*10;
 	 int minWidth =  rect.width*10;
 	 int maxHeight = 0;
@@ -503,12 +497,12 @@ float bbOverlap(const cv::Rect& box1, const cv::Rect& box2)
 	 std::vector<cv::Mat>frontPatternsMask;
 	 frontPatternsImgs.reserve(contours.size());
 	 for (int i = 0; i < contours.size(); i++)
-	 {
+	 { 
 		 cv::Rect region = cv::boundingRect(contours[i]);
-		 if (region.width > 1 && region.height > 1 )
+		 if (region.width > rect.width*0.03 && region.height > rect.width * 0.03)
 		 {
 			 double f = 1. * region.height / region.width;
-			 if (f>0.95 &&f<1.05)
+			 if (f>0.90 &&f<1.1)
 			 {
 				 if (minHeight > region.height)minHeight = region.height;
 				 if (minWidth > region.width)minWidth = region.width;
@@ -524,8 +518,147 @@ float bbOverlap(const cv::Rect& box1, const cv::Rect& box2)
 				 if (maxFrontPatternsSize.width < patternLocal.cols)maxFrontPatternsSize.width = patternLocal.cols;
 				 if (maxFrontPatternsSize.height < patternLocal.rows)maxFrontPatternsSize.height = patternLocal.rows;
 			 }
+			 else
+			 {
+				 //half
+				 if (minHeight > region.height)minHeight = region.height;
+				 if (minWidth > region.width)minWidth = region.width;
+				 if (maxHeight < region.height)maxHeight = region.height;
+				 if (maxWidth < region.width)maxWidth = region.width;
+				 maybeHalfFrontPatterns.emplace_back(region);
+				 const cv::Mat& colorLocal = sheepWinFront(region);
+				 cv::Mat patternLocal;
+				 colorLocal.copyTo(patternLocal);
+
+				 maybeHalfFrontPatternsImgs.emplace_back(patternLocal);
+				 maybeHalfFrontPatternsMask.emplace_back(frontMaskNeg(region)); 
+			 }
 		 }
 	 }
+
+
+	 std::vector<cv::Rect> fullRectForMaybeHalfFront(maybeHalfFrontPatternsMask.size());
+	 for (int i = 0; i < maybeHalfFrontPatternsMask.size(); i++)
+	 {
+		 cv::Mat mask_inv = 1 - maybeHalfFrontPatternsMask[i]; 
+		 std::vector<std::vector<cv::Point>> halfContours;
+		 cv::findContours(mask_inv, halfContours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE); 
+		 std::list<cv::Point>edgePts;
+		 for (const auto&d: halfContours)
+		 {
+			for (int j = 0; j < d.size(); j++)
+			{
+				int prevJ = j == 0 ? (d.size() - 1) : j - 1;
+				if (d[prevJ].x == d[j].x && 1 < abs(d[prevJ].y - d[j].y))
+				{
+					int sign = d[prevJ].y - d[j].y > 0 ? -1 : 1;
+					for (int k = d[prevJ].y + sign; k != d[j].y; k += sign)
+					{
+						edgePts.emplace_back(d[prevJ].x, k);
+					}
+				}
+				if (d[prevJ].y == d[j].y && 1 < abs(d[prevJ].x - d[j].x))
+				{
+					int sign = d[prevJ].x - d[j].x > 0 ? -1 : 1;
+					for (int k = d[prevJ].x + sign; k != d[j].x; k += sign)
+					{
+						edgePts.emplace_back(k, d[prevJ].y);
+					}
+				}
+			}
+		 }
+
+		 int leftBboxCnt = 0;
+		 int rightBboxCnt = 0;
+		 int leftThre = 3;
+		 int rightThre = mask_inv.cols - 3;;
+		 int upBboxCnt = 0;
+		 int downBboxCnt = 0;
+		 int upThre = 3;
+		 int downThre = mask_inv.rows - 3;;
+		 for (auto&d: edgePts)
+		 {
+			 if (d.x < leftThre)
+			 {
+				 leftBboxCnt++;
+			 }
+			 if (d.x > rightThre)
+			 {
+				 rightBboxCnt++;
+			 }
+			 if (d.y < upThre)
+			 {
+				 upBboxCnt++;
+			 }
+			 if (d.y > downThre)
+			 {
+				 downBboxCnt++;
+			 }
+		 } 
+		 if (leftBboxCnt <= rightBboxCnt&& leftBboxCnt <= upBboxCnt && leftBboxCnt <= downBboxCnt)
+		 {
+			 //left
+			 maybeHalfFrontPatterns[i].x -= (maxWidth -maybeHalfFrontPatterns[i].width);
+			 maybeHalfFrontPatterns[i].width = maxWidth;
+			 if (maybeHalfFrontPatterns[i].x < 0)maybeHalfFrontPatterns[i].x = 0;
+		 }
+		 else if (rightBboxCnt <= leftBboxCnt && rightBboxCnt <= upBboxCnt && rightBboxCnt <= downBboxCnt)
+		 {
+			 //right
+			 maybeHalfFrontPatterns[i].width = maxWidth;
+			 if (maybeHalfFrontPatterns[i].x + maybeHalfFrontPatterns[i].width > frontMask.cols)maybeHalfFrontPatterns[i].width = frontMask.cols - maybeHalfFrontPatterns[i].x;
+		 }
+		 else if (upBboxCnt <= leftBboxCnt && upBboxCnt <= rightBboxCnt && upBboxCnt <= downBboxCnt)
+		 {
+			 //up
+			 maybeHalfFrontPatterns[i].y -= (maxHeight - maybeHalfFrontPatterns[i].height);
+			 maybeHalfFrontPatterns[i].height = maxHeight;
+			 if (maybeHalfFrontPatterns[i].y < 0)maybeHalfFrontPatterns[i].x = 0;
+		 }
+		 else  
+		 {
+			 //down
+			 maybeHalfFrontPatterns[i].height = maxHeight;
+			 if (maybeHalfFrontPatterns[i].y + maybeHalfFrontPatterns[i].height > frontMask.rows)maybeHalfFrontPatterns[i].height = frontMask.rows - maybeHalfFrontPatterns[i].y;
+		 }
+	 }
+	 
+ 
+	 for (int i = 0; i < maybeHalfFrontPatterns.size()-1; i++)
+	 {
+		 for (int j = i+1; j < maybeHalfFrontPatterns.size(); j++)
+		 {
+			 float iou = bbOverlapBase(maybeHalfFrontPatterns[i], maybeHalfFrontPatterns[j]);
+			 if (iou>0.75)
+			 {
+				 std::vector<cv::Point> comboContor = contours[i];
+				 comboContor.insert(comboContor.end(), contours[i].begin(), contours[i].end());
+				 cv::Rect region = cv::boundingRect(comboContor);
+				 if (region.width > rect.width * 0.03 && region.height > rect.width * 0.03)
+				 {
+					 double f = 1. * region.height / region.width;
+					 if (f > 0.90 && f < 1.1)
+					 {
+						 if (minHeight > region.height)minHeight = region.height;
+						 if (minWidth > region.width)minWidth = region.width;
+						 if (maxHeight < region.height)maxHeight = region.height;
+						 if (maxWidth < region.width)maxWidth = region.width;
+						 frontPatterns.emplace_back(region);
+						 const cv::Mat& colorLocal = sheepWinFront(region);
+						 cv::Mat patternLocal;
+						 colorLocal.copyTo(patternLocal);
+
+						 frontPatternsImgs.emplace_back(patternLocal);
+						 frontPatternsMask.emplace_back(frontMaskNeg(region));
+						 if (maxFrontPatternsSize.width < patternLocal.cols)maxFrontPatternsSize.width = patternLocal.cols;
+						 if (maxFrontPatternsSize.height < patternLocal.rows)maxFrontPatternsSize.height = patternLocal.rows;
+					 }
+				 }
+			 }
+		 }
+	 }
+
+
 	 std::vector<int>frontPatternsLabels;//return
 	 labelblock.updata(frontPatternsImgs, frontPatternsMask, frontPatternsLabels);
 	 frontReture.resize(frontPatternsLabels.size());//return
@@ -707,6 +840,7 @@ float bbOverlap(const cv::Rect& box1, const cv::Rect& box2)
 
 int main()
 {
+	cv::Mat waitkeyMat(100,100,CV_8UC1);
 	int screenHeight = 0;
 	int screenWidth = 0;
 	initGDI(&screenHeight,&screenWidth);
@@ -715,11 +849,10 @@ int main()
 	while (true)
 	{
 
-
-
+	 
 		cv::Mat screen;
-		screenCapture(&screen);
-
+		//screenCapture(&screen);
+		screen = cv::imread("sheep.bmp"); 
 
 		cv::Mat& img = screen;
 		cv::Rect sheepWin;
@@ -727,10 +860,12 @@ int main()
 		auto fgColor = cv::Vec3b(205, 255, 245);//front
 		auto bgColor = cv::Vec3b(123, 153, 147);//behind
 		auto lineColor = cv::Vec3b(30, 80, 60);//line
-		if (pickWindowBaseBg(img, grassColor, sheepWin))
+		if (0 != pickWindowBaseBg(img, grassColor, sheepWin))
 		{
-			LOG(ERROR) << "pickWindowBaseBg";
+			std::this_thread::sleep_for(std::chrono::seconds(1));
+			continue;
 		}
+		sheepWin.height -= sheepWin.height * CURREN_LABEL_REGION;
 		img(sheepWin).copyTo(global);
 		std::vector<std::pair<cv::Rect, int>> frontReture;
 		std::vector<std::tuple<cv::Rect, std::list<cv::Point>, int>> coveredReture;
@@ -743,6 +878,11 @@ int main()
 
 		cv::Rect hit;
 		int hitLabel = recursive(currentLabels, layer1, layer2_1, layer2_11, layer3_12, layer3_22, hit);
+		if (hit.x<0)
+		{
+			std::cout<<123<<std::endl;
+			continue;
+		}
 		currentLabels.emplace_back(hitLabel);
 		{
 			std::map<int, int>labelCntTemp;
@@ -772,7 +912,15 @@ int main()
 
 		setMousePos(sheepWin.x + hit.x + 0.5 * hit.width, sheepWin.y + hit.y + 0.5 * hit.height);
 		setMouseLeftChick();
-
+		std::this_thread::sleep_for(std::chrono::milliseconds(300));
+		if (layer1.size()<=1)
+		{
+			labelblock.clear();
+			std::this_thread::sleep_for(std::chrono::seconds(2)); 
+		}
+		//cv::imshow("key", waitkeyMat);
+		//cv::waitKey();
+		
 	}
 	return 0;
 }
