@@ -360,19 +360,19 @@ int recursive(const std::vector<int>&currentLabels,
 				}
 			}
 			int littleScore = 0;
-			for (auto& d : labelClusterTmp)
+			for (auto& d1 : labelClusterTmp)
 			{
-				if (d.second >= 2)
+				if (d1.second >= 2)
 				{
-					littleScore++;
+					littleScore+=2;
 				}
 			}
-
+			littleScore += (new_layer1.size()- layer1.size());
 			//look for 3 
 			std::list<std::list<int>> candidatePath2 = getCandidate(newCurrentLabelsTmp, new_layer1, new_layer2_1, new_layer2_11, new_layer3_12, new_layer3_22);
 			if (candidatePath2.size() != 0)
 			{ 
-				for (const auto& d1 : candidatePath)
+				for (const auto& d1 : candidatePath2)
 				{
 					int score = chooseFrontList(d1, layer1, layer2_1, layer2_11, layer3_12, layer3_22);
 					scores.emplace_back(std::make_pair(score+ littleScore, d.id));
